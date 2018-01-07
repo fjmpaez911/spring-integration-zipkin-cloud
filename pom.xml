@@ -29,7 +29,7 @@
 	<dependencies>
 		<!-- SPRING BOOT -->
 		
-		<!-- it fails because of this dependency in that we are using Edgware.RELEASE version -->
+		<!-- it fails because of this dependency when we are using Edgware.RELEASE version -->
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-sleuth-zipkin</artifactId>

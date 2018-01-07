@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-amqp="http://www.springframework.org/schema/integration/amqp"
+       xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/integration
+                           http://www.springframework.org/schema/integration/spring-integration.xsd
+                           http://www.springframework.org/schema/integration/amqp
+                           http://www.springframework.org/schema/integration/amqp/spring-integration-amqp.xsd
+                           http://www.springframework.org/schema/rabbit
+                           http://www.springframework.org/schema/rabbit/spring-rabbit.xsd">
+
+
+	<!-- RabbitMQ configuration -->
+    <rabbit:connection-factory
+            id="rabbitConnectionFactory_2"
+            host="${queuing.events.host}"
+            port="${queuing.events.port}"
+            username="${queuing.events.username}"
+            password="${queuing.events.password}"
+            virtual-host="${queuing.events.virtual-host}"
+            publisher-returns="true"/>
+ 
+    <rabbit:template id="amqpTemplate_2" connection-factory="rabbitConnectionFactory_2" />
+    <rabbit:admin id="rabbitAdmin_2" connection-factory="rabbitConnectionFactory_2"/>
+    <rabbit:listener-container connection-factory="rabbitConnectionFactory_2" auto-startup="true" requeue-rejected="false" />
+	 
+	<bean id="rabbitListenerContainerFactory_2" class="org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory">
+	    <property name="connectionFactory" ref="rabbitConnectionFactory_2"/>
+	</bean>
+	<!--  -->
+
+
+    <!-- RabbitMQ Queues / Exchanges configuration -->
+    <rabbit:queue name="${queuing.events.queue}" durable="true" declared-by="rabbitAdmin_2"/>
+    
+    <rabbit:topic-exchange name="${queuing.events.exchange}" declared-by="rabbitAdmin_2" >
+        <rabbit:bindings>
+            <rabbit:binding 
+            	queue="${queuing.events.queue}" 
+            	pattern="${queuing.events.binding.exchange.queue.activation-events.pattern}">
+            </rabbit:binding>
+            <rabbit:binding 
+            	queue="${queuing.events.queue}" 
+            	pattern="${queuing.events.binding.exchange.queue.update-events.pattern}">
+            </rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:topic-exchange>
+    
+    <rabbit:topic-exchange name="${queuing.events.delay-exchange}" delayed="true" declared-by="rabbitAdmin_2" >
+        <rabbit:bindings>
+            <rabbit:binding 
+            	queue="${queuing.events.queue}" 
+            	pattern="${queuing.events.binding.delay-exchange.queue.activation-events.pattern}">
+            </rabbit:binding>
+            <rabbit:binding 
+            	queue="${queuing.events.queue}" 
+            	pattern="${queuing.events.binding.delay-exchange.queue.update-events.pattern}">
+            </rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:topic-exchange>
+    <!--  -->
+	
+</beans>

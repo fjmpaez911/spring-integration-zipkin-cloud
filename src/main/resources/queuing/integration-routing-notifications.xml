@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-amqp="http://www.springframework.org/schema/integration/amqp"
+       xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/integration
+                           http://www.springframework.org/schema/integration/spring-integration.xsd
+                           http://www.springframework.org/schema/integration/amqp
+                           http://www.springframework.org/schema/integration/amqp/spring-integration-amqp.xsd
+                           http://www.springframework.org/schema/rabbit
+                           http://www.springframework.org/schema/rabbit/spring-rabbit.xsd">
+
+    
+	<int:channel id="producingChannel" />
+    <int:channel id="consumingNotificationsChannel" />
+    <int:channel id="delayNotificationsChannel" />
+
+
+    <int:gateway 
+    	id="gateway" 
+    	default-request-channel="producingChannel" 
+    	service-interface="com.fjmpaez.queuing.Gateway"/>
+
+    <int:chain input-channel="producingChannel">
+    	<int:object-to-json-transformer/>
+        <int-amqp:outbound-channel-adapter 
+        	exchange-name="${queuing.notifications.exchange}" 
+        	routing-key-expression="headers.routingKey" 
+        	mapped-request-headers="*" 
+        	amqp-template="amqpTemplate" />
+    </int:chain>
+    
+
+    <int:gateway 
+    	id="retryGatewayNotifications" 
+    	default-request-channel="delayNotificationsChannel" 
+    	service-interface="com.fjmpaez.queuing.RetryGatewayNotifications"/>
+
+    <int:chain input-channel="delayNotificationsChannel">
+    	<int:object-to-json-transformer/>
+        <int-amqp:outbound-channel-adapter 
+        	exchange-name="${queuing.notifications.delay-exchange}" 
+        	routing-key-expression="headers.routingKey" 
+        	mapped-request-headers="*" 
+        	amqp-template="amqpTemplate" />
+    </int:chain>
+    
+    
+    <int-amqp:inbound-channel-adapter 
+    	channel="consumingNotificationsChannel" 
+    	queue-names="${queuing.notifications.queue}" 
+    	concurrent-consumers="${queuing.concurrent-consumers}" 
+    	prefetch-count="${queuing.prefetch-count}" 
+    	mapped-request-headers="*" 
+    	error-channel="errorChannel" 
+    	connection-factory="rabbitConnectionFactory" />
+
+    <int:chain input-channel="consumingNotificationsChannel">
+    	<int:json-to-object-transformer type="com.fjmpaez.queuing.pojo.Notification"/>
+        <int:service-activator ref="workingService" method="processNotificationFromQueue"/>
+    </int:chain>
+
+	
+</beans>
